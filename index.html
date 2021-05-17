@@ -180,7 +180,7 @@
                 .domain([0]) //make sure to put this in brackets!
                 .range(["below", "above"])
 
-            let lang = "In <strong> " + d.properties.Geo_QName  + ", " + d.properties.pop_18_in_poverty + "</strong> children are estimated to be under poverty."
+            let lang = "In <strong> " + d.properties.Geo_QName  + ", " + d3.format(",")(d.properties.pop_18_in_poverty) + "</strong> children are estimated to be under poverty."
 
             popup
                 .style("opacity", 1)
