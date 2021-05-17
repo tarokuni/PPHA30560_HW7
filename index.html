@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        .chart-container {
+            max-width: 1050px;
+            /* border: 3px solid red; */
+            margin: 0 auto;
+            /* auto centers the div */
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        svg {
+            /* border: 2px solid purple; */
+            overflow: visible;
+        }
+
+
+        h1 {
+            font-size: 35px;
+            /* border: 2px solid green; */
+        }
+
+
+        .pop-up {
+            position: absolute; 
+            border: 2px solid black;
+            border-radius: 1px;
+            line-height: 1.2;
+            width: 200px;
+            pointer-events: none;
+            background-color: white;
+            padding: 10px;
+        }
+
+
+        .filler .source {
+            margin-top: 10px;
+            margin-left: 1050px;
+            font-size: 18px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+    </style>
+    <!-- add your script blocks at the end -->
+
+</head>
+
+<body>
+    <section>
+        <div class="chart-container">
+
+            <h1 class="headline">
+                Estimated number of children living under poverty (2019)
+            </h1>
+
+            <svg width="1050px" height="500px"></svg>
+            
+            <div class="pop-up"></div>
+
+        </div>
+    </section>
+
+    <section class='filler'>
+        <p class="source">Based on data from the Census</p>
+    </section>
+</body>
+
+
+<!-- we're using d3 version 6 (the latest version) for all out work -->
+<script src="https://d3js.org/d3.v6.min.js"></script>
+
+<!-- load topojson script -->
+<script src="https://unpkg.com/topojson@3"></script>
+
+<script>
+    // console.log({ d3 })
+    // console.log({ topojson })
+
+    // //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise
+    Promise.all([ //waits for all the data to load, then when loaded will return it all in one array called res
+        d3.json('data.json'),
+    ])
+        .then(ready)
+        .catch((err) => {
+            console.log(err);
+        });
+
+    function ready(res) {
+        // console.log(res[0])
+        let raw = res[0]
+
+        let county = topojson.feature(raw, raw.objects.county);
+        let state = topojson.feature(raw, raw.objects.state);
+
+        let width = 1050;
+        let height = 500;
+
+        console.log(county, state)
+
+        let svg = d3.select("body").select("svg")
+
+        let myProjection = d3.geoAlbersUsa()
+            .fitSize([width, height], county)
+
+        // path function
+        let path = d3.geoPath()
+            .projection(myProjection)
+
+        // let innerlines = topojson.mesh(raw, raw.objects.state, function (a, b) {
+        //     return a != b;
+        // });
+
+
+        svg
+            .selectAll(".states")
+            .data(state.features)
+            .join("path")
+            .attr("d", path)
+            .style("fill", "#eee")
+            .style("stroke", "#333")
+            .style("stroke-width", 1.5)
+            .style("pointer-events", "none")
+
+        // let scalefunction = d3.scaleSqrt()
+        //     .domain([])
+        //     .range([])
+            
+        let counties = svg
+            .selectAll(".counties")
+            .data(county.features)
+            .join("circle")
+            .attr("r", d => {
+                if (!isNaN(path.centroid(d)[0])){
+                    return Math.sqrt(d.properties.pop_18_in_poverty/300)
+                } else {
+                    return 0
+                }
+            })
+            .attr("cx", d => {
+                // console.log(path.centroid)
+                if (!isNaN(path.centroid(d)[0])){
+                    return path.centroid(d)[0]
+                }
+            })
+            .attr("cy", d => {
+                if (!isNaN(path.centroid(d)[1])){
+                    return path.centroid(d)[1]
+                }
+            })
+            .attr("class", function (d) { 
+                // console.log(d)
+                return "fips-" + d.properties.Geo_FIPS
+            })
+            .style("fill", "orange")
+            .style("stroke", "white")
+            .style("stroke-width", .25)
+
+        
+
+
+        let popup = d3.select(".pop-up").style("opacity", 0);
+
+        counties.on("mouseover", (event, d) => {
+
+            counties
+                .style("stroke", "white")
+                .style("stroke-width", .25)
+                .style("fill", "orange")
+
+            svg.select(".fips-" + d.properties.Geo_FIPS)
+                .style("stroke", "black")
+                .style("stroke-width", 2)
+                .style("fill", "yellow")
+                .style("fill-opacity", 1)
+                .raise()
+
+            let reScaleLang = d3.scaleThreshold()
+                .domain([0]) //make sure to put this in brackets!
+                .range(["below", "above"])
+
+            let lang = "In <strong> " + d.properties.Geo_QName  + ", " + d.properties.pop_18_in_poverty + "</strong> children are estimated to be under poverty."
+
+            popup
+                .style("opacity", 1)
+                .style("left", (event.x - 150) + "px")
+                .style("top", (event.y - 100) + "px")
+                .html(lang)
+
+            })
+
+
+            counties.on("mouseout", (event, d) => {
+                
+                console.log(event)
+                counties
+                    .style("stroke", "white")
+                    .style("stroke-width", .25)
+                    .style("fill", "orange")
+
+                popup
+                    .style("opacity", 0)
+
+            })
+
+
+
+    }
+
+
+
+
+
+
+
+</script>
